@@ -17,7 +17,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>
 #
-# $Id: package.sh 72 2021-11-25 18:15:54Z rhubarb-geek-nz $
+# $Id: package.sh 80 2021-12-03 11:48:59Z rhubarb-geek-nz $
 #
 
 APPNAME=rhubarb-pi-debsig
@@ -28,7 +28,7 @@ svnVer()
 	do
 		echo $C
 	done << 'EOF'
-$Id: package.sh 72 2021-11-25 18:15:54Z rhubarb-geek-nz $
+$Id: package.sh 80 2021-12-03 11:48:59Z rhubarb-geek-nz $
 EOF
 }
 
@@ -41,15 +41,43 @@ cleanup
 
 trap cleanup 0
 
+USEHTTPS=true
+
+dpkg -l debsig-verify
+
+PKGVERS=$( dpkg -l debsig-verify | grep "ii " | grep debsig-verify | grep $(dpkg --print-architecture) | while read A B C D; do echo $C; break; done )
+
+test -n "$PKGVERS"
+
+PKGVERS=$( echo "$PKGVERS" | sed "y/./ /; y/+/ /; y/-/ /" )
+
+echo PKGVERS=$PKGVERS
+
+while read MAJVERS MINVERS
+do
+	if test "$MAJVERS" -eq 0
+	then
+		if test "$MINVERS" -lt 15
+		then
+			USEHTTPS=false
+		fi
+	fi
+	break
+done << EOF
+$PKGVERS
+EOF
+
+echo USEHTTPS=$USEHTTPS
+
 SVNVER=`svnVer`
 VERSION="1.0.$SVNVER"
 DPKGARCH=all
-if test $( . /etc/os-release ; echo $VERSION_ID ) -gt 8
+if $USEHTTPS
 then
 	HTTP_PROTO=https
-	DEPENDS="debsig-verify (>= 0.16)"
+	DEPENDS="debsig-verify (>= 0.15)"
 else
-	DEPENDS="debsig-verify (= 0.10)"
+	DEPENDS="debsig-verify (<< 0.15)"
 	HTTP_PROTO=http
 fi
 KEYID=72DD1FFFFA779633FD430DC5006C5A2905B4D63C
