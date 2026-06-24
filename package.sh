@@ -17,7 +17,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>
 #
-# $Id: package.sh 31 2021-01-31 06:32:01Z rhubarb-geek-nz $
+# $Id: package.sh 72 2021-11-25 18:15:54Z rhubarb-geek-nz $
 #
 
 APPNAME=rhubarb-pi-debsig
@@ -28,7 +28,7 @@ svnVer()
 	do
 		echo $C
 	done << 'EOF'
-$Id: package.sh 31 2021-01-31 06:32:01Z rhubarb-geek-nz $
+$Id: package.sh 72 2021-11-25 18:15:54Z rhubarb-geek-nz $
 EOF
 }
 
@@ -44,7 +44,14 @@ trap cleanup 0
 SVNVER=`svnVer`
 VERSION="1.0.$SVNVER"
 DPKGARCH=all
-DEPENDS="debsig-verify (>= 0.16)"
+if test $( . /etc/os-release ; echo $VERSION_ID ) -gt 8
+then
+	HTTP_PROTO=https
+	DEPENDS="debsig-verify (>= 0.16)"
+else
+	DEPENDS="debsig-verify (= 0.10)"
+	HTTP_PROTO=http
+fi
 KEYID=72DD1FFFFA779633FD430DC5006C5A2905B4D63C
 KEYTHUMB=`echo $KEYID | tail -c 17`
 KEYNAME=rhubarb-geek-nz
@@ -60,8 +67,8 @@ gpg --export "$KEYID" > data/usr/share/debsig/keyrings/$KEYTHUMB/$KEYNAME.gpg
 
 cat > data/etc/debsig/policies/$KEYTHUMB/$KEYNAME.pol <<EOF
 <?xml version="1.0"?>
-<!DOCTYPE Policy SYSTEM "https://www.debian.org/debsig/1.0/policy.dtd">
-<Policy xmlns="https://www.debian.org/debsig/1.0/">
+<!DOCTYPE Policy SYSTEM "$HTTP_PROTO://www.debian.org/debsig/1.0/policy.dtd">
+<Policy xmlns="$HTTP_PROTO://www.debian.org/debsig/1.0/">
   <Origin Name="$KEYNAME" id="$KEYTHUMB" Description="$MAINTAINER"/>
   <Selection>
      <Required Type="origin" File="$KEYNAME.gpg" id="$KEYTHUMB"/>
